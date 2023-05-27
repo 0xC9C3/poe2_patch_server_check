@@ -65,9 +65,11 @@ jobs:
             });
             const release = releases.find((release) => release.tag_name === version);
             if (release) {
-              core.setFailed(`Release ${version} already exists`);
+              console.log(`Release ${version} already exists`);
+              core.setOutput("release_exists", true);
             }
       - name: download client binaries 'PathOfExile.exe', 'PathOfExile_x64.exe', 'Client.exe'
+        if: steps.get_version.outputs.release_exists != 'true'
         run: |
           URL="${CDN_URL}PathOfExile.exe"
           echo "downloading $URL"
@@ -81,6 +83,7 @@ jobs:
           echo "downloading $URL"
           wget -q -O Client.exe $URL
       - name: create github release and attach the files
+        if: steps.get_version.outputs.release_exists != 'true'
         uses: actions/github-script@v4
         with:
           # github-token: ${{ secrets.GITHUB_TOKEN }}
