@@ -31,32 +31,22 @@ jobs:
           override: true
       - name: Build
         run: cargo build --release
+      - name: get cdn url
+        run: |
+          CDN_URL=$(cargo run --release | head -n 1)
+          echo $CDN_URL
+          echo "CDN_URL=$CDN_URL" >> $GITHUB_OUTPUT
+        id: get_cdn_url
   check-for-updates:
     needs: [build]
     runs-on: ubuntu-latest
     name: Check for updates
     steps:
-      - name: retrieve binary from cache
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: get cdn url
-        run: |
-          CDN_URL=$(target/release/poe_patch_server_watcher | head -n 1)
-          echo $CDN_URL
-          echo "::set-output name=cdn_url::$CDN_URL"
-        id: get_cdn_url
       - name: extract the version
         run: |
-          VERSION=$(echo ${{ steps.get_cdn_url.outputs.cdn_url }} | awk -F'/' '{print $4}')
+          VERSION=$(echo ${{ steps.get_cdn_url.outputs.CDN_URL }} | awk -F'/' '{print $4}')
           echo "The current version is $VERSION"
-          echo "::set-output name=version::$VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
         id: get_version
       - name: check if github release with the given version exists
         uses: actions/github-script@v4
