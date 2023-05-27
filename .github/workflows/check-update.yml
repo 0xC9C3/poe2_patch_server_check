@@ -67,8 +67,10 @@ jobs:
             if (release) {
               console.log(`Release ${version} already exists`);
               core.setOutput("release_exists", true);
+            } else {
+              console.log(`Release ${version} does not exist`);
+              core.setOutput("release_exists", false);
             }
-            core.setOutput("release_exists", false);
       - name: download client binaries 'PathOfExile.exe', 'PathOfExile_x64.exe', 'Client.exe'
         if: steps.get_version.outputs.release_exists != 'true'
         run: |
