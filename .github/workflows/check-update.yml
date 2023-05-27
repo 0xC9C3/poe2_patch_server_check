@@ -55,6 +55,7 @@ jobs:
         id: get_version
       - name: check if github release with the given version exists
         uses: actions/github-script@v4
+        id: check_release
         with:
           # github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -72,7 +73,7 @@ jobs:
               core.setOutput("release_exists", "false");
             }
       - name: download client binaries 'PathOfExile.exe', 'PathOfExile_x64.exe', 'Client.exe'
-        if: ${{ steps.get_version.outputs.release_exists != 'true' }}
+        if: ${{ steps.check_release.outputs.release_exists != 'true' }}
         run: |
           URL="${CDN_URL}PathOfExile.exe"
           echo "downloading $URL"
@@ -86,7 +87,7 @@ jobs:
           echo "downloading $URL"
           wget -q -O Client.exe $URL
       - name: create github release and attach the files
-        if: ${{ steps.get_version.outputs.release_exists != 'true' }}
+        if: ${{ steps.check_release.outputs.release_exists != 'true' }}
         uses: actions/github-script@v4
         with:
           # github-token: ${{ secrets.GITHUB_TOKEN }}
