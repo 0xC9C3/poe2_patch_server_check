@@ -68,9 +68,17 @@ jobs:
             }
       - name: download client binaries 'PathOfExile.exe', 'PathOfExile_x64.exe', 'Client.exe'
         run: |
-          wget -q -O PathOfExile.exe $CDN_URL/PathOfExile.exe
-          wget -q -O PathOfExile_x64.exe $CDN_URL/PathOfExile_x64.exe
-          wget -q -O Client.exe $CDN_URL/Client.exe
+          $URL=$CDN_URL/PathOfExile.exe
+          echo "downloading $URL"
+          wget -q -O PathOfExile.exe $URL
+          
+          $URL=$CDN_URL/PathOfExile_x64.exe
+          echo "downloading $URL"
+          wget -q -O PathOfExile_x64.exe $URL
+          
+          $URL=$CDN_URL/Client.exe
+          echo "downloading $URL"
+          wget -q -O Client.exe $URL
       - name: create github release and attach the files
         uses: actions/github-script@v4
         with:
