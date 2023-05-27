@@ -67,16 +67,17 @@ jobs:
               core.setFailed(`Release ${version} already exists`);
             }
       - name: download client binaries 'PathOfExile.exe', 'PathOfExile_x64.exe', 'Client.exe'
+        if: false == true
         run: |
-          $URL=$CDN_URL/PathOfExile.exe
+          URL="${CDN_URL}PathOfExile.exe"
           echo "downloading $URL"
           wget -q -O PathOfExile.exe $URL
           
-          $URL=$CDN_URL/PathOfExile_x64.exe
+          URL="${CDN_URL}PathOfExile_x64.exe"
           echo "downloading $URL"
           wget -q -O PathOfExile_x64.exe $URL
           
-          $URL=$CDN_URL/Client.exe
+          URL="${CDN_URL}Client.exe"
           echo "downloading $URL"
           wget -q -O Client.exe $URL
       - name: create github release and attach the files
