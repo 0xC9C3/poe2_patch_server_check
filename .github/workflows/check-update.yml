@@ -1,0 +1,116 @@
+name: Automatically check if an update is available and create a release if so
+run-name: Automatically check if an update is available and create a release if so
+on:
+  push: null
+  schedule:
+    - cron: '0 */1 * * *'
+  workflow_dispatch:
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Build and run rust app
+    steps:
+      - name: retrieve or update cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Build
+        run: cargo build --release
+  check-for-updates:
+    needs: [build]
+    runs-on: ubuntu-latest
+    name: Check for updates
+    steps:
+      - name: retrieve binary from cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: get cdn url
+        run: |
+          CDN_URL=$(target/release/poe_patch_server_watcher | head -n 1)
+          echo $CDN_URL
+          echo "::set-output name=cdn_url::$CDN_URL"
+        id: get_cdn_url
+      - name: extract the version
+        run: |
+          VERSION=$(echo ${{ steps.get_cdn_url.outputs.cdn_url }} | awk -F'/' '{print $4}')
+          echo "The current version is $VERSION"
+          echo "::set-output name=version::$VERSION"
+        id: get_version
+      - name: check if github release with the given version exists
+        uses: actions/github-script@v4
+        with:
+          # github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const version = "${{ steps.get_version.outputs.version }}";
+            const { data: releases } = await github.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const release = releases.find((release) => release.tag_name === version);
+            if (release) {
+              core.setFailed(`Release ${version} already exists`);
+            }
+      - name: download client binaries 'PathOfExile.exe', 'PathOfExile_x64.exe', 'Client.exe'
+        run: |
+          wget -q -O PathOfExile.exe ${{ steps.get_cdn_url.outputs.cdn_url }}/PathOfExile.exe
+          wget -q -O PathOfExile_x64.exe ${{ steps.get_cdn_url.outputs.cdn_url }}/PathOfExile_x64.exe
+          wget -q -O Client.exe ${{ steps.get_cdn_url.outputs.cdn_url }}/Client.exe
+      - name: create github release and attach the files
+        uses: actions/github-script@v4
+        with:
+          # github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const version = "${{ steps.get_version.outputs.version }}";
+            const { data: release } = await github.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: version,
+              name: version,
+              body: `Release ${version}`,
+              draft: false,
+              prerelease: false,
+            });
+            const { data: upload } = await github.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.id,
+              name: 'PathOfExile.exe',
+              data: require('fs').readFileSync('./PathOfExile.exe'),
+            });
+            const { data: upload2 } = await github.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.id,
+              name: 'PathOfExile_x64.exe',
+              data: require('fs').readFileSync('./PathOfExile_x64.exe'),
+            });
+            const { data: upload3 } = await github.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.id,
+              name: 'Client.exe',
+              data: require('fs').readFileSync('./Client.exe'),
+            });
+            core.setOutput("release_id", release.id)
