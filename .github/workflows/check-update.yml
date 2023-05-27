@@ -11,6 +11,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     name: Build and run rust app
+    outputs:
+      cdn_url: ${{ steps.get_cdn_url.outputs.CDN_URL }}
     steps:
       - name: retrieve or update cache
         uses: actions/cache@v3
@@ -41,10 +43,12 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     name: Check for updates
+    env:
+      CDN_URL: ${{ needs.build.outputs.cdn_url }}
     steps:
       - name: extract the version
         run: |
-          VERSION=$(echo ${{ steps.get_cdn_url.outputs.CDN_URL }} | awk -F'/' '{print $4}')
+          VERSION=$(echo $CDN_URL | awk -F'/' '{print $4}')
           echo "The current version is $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
         id: get_version
@@ -64,9 +68,9 @@ jobs:
             }
       - name: download client binaries 'PathOfExile.exe', 'PathOfExile_x64.exe', 'Client.exe'
         run: |
-          wget -q -O PathOfExile.exe ${{ steps.get_cdn_url.outputs.cdn_url }}/PathOfExile.exe
-          wget -q -O PathOfExile_x64.exe ${{ steps.get_cdn_url.outputs.cdn_url }}/PathOfExile_x64.exe
-          wget -q -O Client.exe ${{ steps.get_cdn_url.outputs.cdn_url }}/Client.exe
+          wget -q -O PathOfExile.exe $CDN_URL/PathOfExile.exe
+          wget -q -O PathOfExile_x64.exe $CDN_URL/PathOfExile_x64.exe
+          wget -q -O Client.exe $CDN_URL/Client.exe
       - name: create github release and attach the files
         uses: actions/github-script@v4
         with:
