@@ -60,7 +60,7 @@ jobs:
           # github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const version = "${{ steps.get_version.outputs.version }}";
-            const { data: releases } = await github.repos.listReleases({
+            const { data: releases } = await github.rest.repos.listReleases({
               owner: context.repo.owner,
               repo: context.repo.repo,
             });
@@ -93,7 +93,7 @@ jobs:
           # github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const version = "${{ steps.get_version.outputs.version }}";
-            const { data: release } = await github.repos.createRelease({
+            const { data: release } = await github.rest.repos.createRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
               tag_name: version,
@@ -102,21 +102,21 @@ jobs:
               draft: false,
               prerelease: false,
             });
-            const { data: upload } = await github.repos.uploadReleaseAsset({
+            const { data: upload } = await github.rest.repos.uploadReleaseAsset({
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: release.id,
               name: 'PathOfExile.exe',
               data: require('fs').readFileSync('./PathOfExile.exe'),
             });
-            const { data: upload2 } = await github.repos.uploadReleaseAsset({
+            const { data: upload2 } = await github.rest.repos.uploadReleaseAsset({
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: release.id,
               name: 'PathOfExile_x64.exe',
               data: require('fs').readFileSync('./PathOfExile_x64.exe'),
             });
-            const { data: upload3 } = await github.repos.uploadReleaseAsset({
+            const { data: upload3 } = await github.rest.repos.uploadReleaseAsset({
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: release.id,
