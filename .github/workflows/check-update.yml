@@ -54,7 +54,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
         id: get_version
       - name: check if github release with the given version exists
-        uses: actions/github-script@v4
+        uses: actions/github-script@v6
         id: check_release
         with:
           # github-token: ${{ secrets.GITHUB_TOKEN }}
