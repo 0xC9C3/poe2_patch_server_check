@@ -88,7 +88,7 @@ jobs:
           wget -q -O Client.exe $URL
       - name: create github release and attach the files
         if: ${{ steps.check_release.outputs.release_exists != 'true' }}
-        uses: actions/github-script@v4
+        uses: actions/github-script@v6
         with:
           # github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
