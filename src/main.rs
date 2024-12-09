@@ -10,7 +10,6 @@ fn main() {
 }
 
 fn check_patch() -> anyhow::Result<()> {
-    // patch.path... - patch4.path...
     let mut stream = TcpStream::connect("us.patch.pathofexile2.com:13060")?;
 
     stream.write(&[1, 6])?;
