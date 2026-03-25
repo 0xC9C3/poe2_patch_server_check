@@ -6,6 +6,9 @@ on:
     - cron: '0 */1 * * *'
   workflow_dispatch:
 
+concurrency:
+  group: check-update
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -14,28 +17,33 @@ jobs:
     outputs:
       cdn_url: ${{ steps.get_cdn_url.outputs.CDN_URL }}
     steps:
-      - name: retrieve or update cache
-        uses: actions/cache@v3
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Cache binary
+        id: cache-binary
+        uses: actions/cache@v4
+        with:
+          path: target/release/poe_patch_server_watcher
+          key: ${{ runner.os }}-binary-${{ hashFiles('src/**', 'Cargo.lock', 'Cargo.toml') }}
+      - name: Set up Rust
+        if: steps.cache-binary.outputs.cache-hit != 'true'
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo dependencies
+        if: steps.cache-binary.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
       - name: Build
+        if: steps.cache-binary.outputs.cache-hit != 'true'
         run: cargo build --release
       - name: get cdn url and remove the quotes
         run: |
-          CDN_URL=$(cargo run --release | head -n 1)
+          CDN_URL=$(./target/release/poe_patch_server_watcher | head -n 1)
           CDN_URL=$(echo $CDN_URL | tr -d '"')
           echo $CDN_URL
           echo "CDN_URL=$CDN_URL" >> $GITHUB_OUTPUT
@@ -54,23 +62,26 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
         id: get_version
       - name: check if github release with the given version exists
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         id: check_release
         with:
-          # github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const version = "${{ steps.get_version.outputs.version }}";
-            const { data: releases } = await github.rest.repos.listReleases({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            });
-            const release = releases.find((release) => release.tag_name === version);
-            if (release) {
+            try {
+              await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: version,
+              });
               console.log(`Release ${version} already exists`);
               core.setOutput("release_exists", "true");
-            } else {
-              console.log(`Release ${version} does not exist`);
-              core.setOutput("release_exists", "false");
+            } catch (error) {
+              if (error.status === 404) {
+                console.log(`Release ${version} does not exist`);
+                core.setOutput("release_exists", "false");
+              } else {
+                throw error;
+              }
             }
       - name: download client binaries 'PathOfExile.exe', 'PathOfExile_x64.exe', 'Client.exe'
         if: ${{ steps.check_release.outputs.release_exists != 'true' }}
@@ -78,19 +89,18 @@ jobs:
           URL="${CDN_URL}PathOfExile.exe"
           echo "downloading $URL"
           wget -q -O PathOfExile.exe $URL
-          
+
           URL="${CDN_URL}PathOfExile_x64.exe"
           echo "downloading $URL"
           wget -q -O PathOfExile_x64.exe $URL
-          
+
           URL="${CDN_URL}Client.exe"
           echo "downloading $URL"
           wget -q -O Client.exe $URL
       - name: create github release and attach the files
         if: ${{ steps.check_release.outputs.release_exists != 'true' }}
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
-          # github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const version = "${{ steps.get_version.outputs.version }}";
             const { data: release } = await github.rest.repos.createRelease({
